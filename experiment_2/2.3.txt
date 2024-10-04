@@ -1,0 +1,113 @@
+.section .data
+sdmid:  .ascii "000111", "\0\0\0"     # 每组数据的流水号（可以从1开始编号） 
+sda:    .long  512   # 状态信息a
+sdb:    .long  -1023    # 状态信息b
+sdc:    .long  1265     # 状态信息c
+sf:     .long  0        # 处理结果f
+        .ascii  "000222","\0\0\0" 
+        .long  256809      # 状态信息a
+        .long  -1023    # 状态信息b
+        .long  2780     # 状态信息c
+        .long  0        # 处理结果f
+       .ascii  "000333","\0\0\0" 
+        .long  2513# 状态信息a
+        .long  1265    # 状态信息b
+        .long  1023     # 状态信息c
+        .long  0        # 处理结果f
+       .ascii  "000444","\0\0\0" 
+        .long  512   # 状态信息a
+        .long  -1023    # 状态信息b
+        .long  1265     # 状态信息c
+        .long  0        # 处理结果f
+        .ascii "555555","\0\0\0"
+        .long  2513
+        .long  1265
+        .long  1023
+        .long  0
+        .ascii "666666","\0\0\0"
+        .long 256800
+        .long -2000
+        .long 1000
+        .long 0
+        num = 6
+midf:  .fill  9, 1, 0 
+          .long 0, 0, 0, 0
+          .fill  9, 1, 0
+          .long 0,0,0,0
+       .fill 9, 1,0
+       .long 0,0,0,0
+highf: .fill  9, 1, 0 
+          .long 0, 0, 0, 0
+          .fill  9, 1, 0
+          .long 0,0,0,0
+          .fill 9,1,0
+          .long 0,0,0,0
+lowf:   .fill  9, 1, 0 
+          .long 0, 0, 0, 0
+          .fill  9, 1, 0
+          .long 0,0,0,0
+          .fill 9,1,0
+          .long 0,0,0,0
+       len=25
+
+.section .text
+.global calculate
+calculate:
+    push %ebx
+    push %ecx
+    push %edx
+    movl 8(%esp), %ebx   
+    movl 12(%esp), %ecx 
+    movl 16(%esp), %edx  
+    leal 100(%ebx), %eax   
+    addl %ecx, %eax        
+    subl %edx, %eax        # eax = a + b - c + 100
+    shll $2, %eax          # eax = (a + b - c + 100) * 4
+    addl %eax, %ebx        # ebx = 5a + b - c + 100
+    sarl $7, %ebx          # ebx = (5a + b - c + 100) / 128
+    cmpl $100, %ebx        # 比较结果和100
+    jge greater_than_100   # 如果大于等于100，跳转到greater_than_100
+    jl less_than_100       # 如果小于100，跳转到less_than_100
+equal_to_100:
+    movl $0, %eax          # f=100，eax=0
+    jmp end                # 跳转到end
+greater_than_100:
+    movl $1, %eax          # f>100，eax=1
+    jmp end                # 跳转到end
+less_than_100:
+    movl $-1, %eax         # f<100，eax=-1
+end:
+    # 恢复寄存器状态
+    pop %edx
+    pop %ecx
+    pop %ebx
+    ret
+.global copy_data
+copy_data:
+    # 保存寄存器状态
+    push %ebx
+    push %ecx
+    push %edx
+    movl 8(%esp), %ebx   # 加载源地址
+    movl 12(%esp), %ecx  # 加载目标地址
+    movl 16(%esp), %edx  # 加载拷贝长度
+    # 循环拷贝4字节数据
+    movl %edx, %eax
+    shrl $2, %eax
+copy_loop:
+    cmpl $0, %eax
+    je end_copy_loop
+    movl (%ebx), %esi
+    movl %esi, (%ecx)
+    addl $4, %ebx
+    addl $4, %ecx
+    subl $1, %eax
+    jmp copy_loop
+end_copy_loop:
+    # 拷贝剩余的1个字节
+    movl %edx, %eax
+    andl $3, %eax
+    cmpl $0, %eax
+    je end
+    movb (%ebx), %al
+    movb %al, (%ecx)
